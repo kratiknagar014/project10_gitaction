@@ -87,13 +87,10 @@ jobs:
       with:
         ssh-private-key: ${{ secrets.DO_SSH_PRIVATE_KEY }}
         
-    - name: Setup server directories and files
+    - name: Verify server connection
       run: |
-        # Create deployment directory on server
-        ssh -o StrictHostKeyChecking=no root@${{ secrets.DO_DROPLET_IP }} "mkdir -p /opt/ors-app/deployment"
-        
-        # Copy docker-compose file
-        scp -o StrictHostKeyChecking=no ./docker-compose.prod.yml root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/docker-compose.yml
+        # Just verify server connection (docker-compose already exists on server)
+        ssh -o StrictHostKeyChecking=no root@${{ secrets.DO_DROPLET_IP }} "ls -la /opt/ors-app/"
         
     - name: Deploy to DigitalOcean Droplet
       run: |
