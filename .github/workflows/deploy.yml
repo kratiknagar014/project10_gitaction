@@ -1,0 +1,211 @@
+name: CI/CD Pipeline for ORS Project
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  DOCKER_REGISTRY: docker.io
+  BACKEND_IMAGE_NAME: ors-backend
+  FRONTEND_IMAGE_NAME: ors-frontend
+
+jobs:
+  # Job 1: Build and Test Backend
+  backend-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up JDK 11
+      uses: actions/setup-java@v3
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+        
+    - name: Run backend tests
+      run: |
+        cd projectORS
+        mvn clean test
+        
+    - name: Build backend JAR
+      run: |
+        cd projectORS
+        mvn clean package -DskipTests
+        
+    - name: Upload backend artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: backend-jar
+        path: projectORS/target/*.jar
+
+  # Job 2: Build and Test Frontend
+  frontend-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '14'
+        cache: 'npm'
+        cache-dependency-path: ORSProject10-UI/package-lock.json
+        
+    - name: Install frontend dependencies
+      run: |
+        cd ORSProject10-UI
+        npm ci
+        
+    - name: Run frontend tests
+      run: |
+        cd ORSProject10-UI
+        npm run test:ci
+        
+    - name: Build frontend
+      run: |
+        cd ORSProject10-UI
+        npm run build:prod
+        
+    - name: Upload frontend artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-dist
+        path: ORSProject10-UI/dist/
+
+  # Job 3: Build and Push Docker Images
+  docker-build:
+    needs: [backend-build, frontend-build]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+      
+    - name: Login to DockerHub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+        
+    - name: Extract metadata for backend
+      id: backend-meta
+      uses: docker/metadata-action@v4
+      with:
+        images: ${{ secrets.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+          
+    - name: Extract metadata for frontend
+      id: frontend-meta
+      uses: docker/metadata-action@v4
+      with:
+        images: ${{ secrets.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+          
+    - name: Build and push backend image
+      uses: docker/build-push-action@v4
+      with:
+        context: ./projectORS
+        file: ./projectORS/Dockerfile
+        push: true
+        tags: ${{ steps.backend-meta.outputs.tags }}
+        labels: ${{ steps.backend-meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        
+    - name: Build and push frontend image
+      uses: docker/build-push-action@v4
+      with:
+        context: ./ORSProject10-UI
+        file: ./ORSProject10-UI/Dockerfile
+        push: true
+        tags: ${{ steps.frontend-meta.outputs.tags }}
+        labels: ${{ steps.frontend-meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Job 4: Deploy to DigitalOcean Droplet
+  deploy:
+    needs: [docker-build]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Setup SSH key
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ secrets.DO_SSH_PRIVATE_KEY }}
+        
+    - name: Copy deployment files to server
+      run: |
+        scp -o StrictHostKeyChecking=no -r ./deployment/ root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/
+        scp -o StrictHostKeyChecking=no ./docker-compose.prod.yml root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/docker-compose.yml
+        
+    - name: Deploy to DigitalOcean Droplet
+      run: |
+        ssh -o StrictHostKeyChecking=no root@${{ secrets.DO_DROPLET_IP }} << 'EOF'
+          cd /opt/ors-app
+          
+          # Set environment variables
+          export DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
+          export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          export JWT_SECRET=${{ secrets.JWT_SECRET }}
+          export MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}
+          export MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}
+          
+          # Pull latest images
+          docker-compose pull
+          
+          # Stop existing containers
+          docker-compose down
+          
+          # Start new containers
+          docker-compose up -d
+          
+          # Clean up old images
+          docker image prune -f
+          
+          # Check deployment status
+          sleep 30
+          docker-compose ps
+          
+          # Test application health
+          curl -f http://localhost:8084/actuator/health || exit 1
+          curl -f http://localhost/ || exit 1
+        EOF
+        
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ ${{ job.status }} == 'success' ]; then
+          echo "✅ Deployment successful!"
+          echo "🌐 Application URL: http://${{ secrets.DO_DROPLET_IP }}"
+          echo "📊 Backend Health: http://${{ secrets.DO_DROPLET_IP }}:8084/actuator/health"
+        else
+          echo "❌ Deployment failed!"
+        fi

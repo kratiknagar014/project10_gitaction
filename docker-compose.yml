@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  database:
+    image: mysql:8.0
+    container_name: ors-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: project10_adv
+      MYSQL_USER: ors_user
+      MYSQL_PASSWORD: ors_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./projectORS/project10_adv.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - ors-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Spring Boot Backend
+  backend:
+    build:
+      context: ./projectORS
+      dockerfile: Dockerfile
+    container_name: ors-backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: database
+      DB_PORT: 3306
+      DB_NAME: project10_adv
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      JWT_SECRET: RaysTechSecretKey2024
+      MAIL_USERNAME: ${MAIL_USERNAME:-your_email@gmail.com}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-your_app_password}
+    ports:
+      - "8084:8084"
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - ors-network
+    volumes:
+      - backend_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Angular Frontend
+  frontend:
+    build:
+      context: ./ORSProject10-UI
+      dockerfile: Dockerfile
+    container_name: ors-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - ors-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx Reverse Proxy (Optional - for production-like setup)
+  nginx:
+    image: nginx:alpine
+    container_name: ors-nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - ors-network
+
+volumes:
+  mysql_data:
+    driver: local
+  backend_logs:
+    driver: local
+
+networks:
+  ors-network:
+    driver: bridge

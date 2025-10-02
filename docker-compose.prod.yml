@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  # MySQL Database for Production
+  database:
+    image: mysql:8.0
+    container_name: ors-mysql-prod
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: project10_adv
+      MYSQL_USER: ors_user
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_prod_data:/var/lib/mysql
+      - ./deployment/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - ors-prod-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+    command: --default-authentication-plugin=mysql_native_password
+
+  # Spring Boot Backend (Production)
+  backend:
+    image: ${DOCKER_USERNAME}/ors-backend:latest
+    container_name: ors-backend-prod
+    restart: always
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: database
+      DB_PORT: 3306
+      DB_NAME: project10_adv
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+    ports:
+      - "8084:8084"
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - ors-prod-network
+    volumes:
+      - backend_prod_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  # Angular Frontend (Production)
+  frontend:
+    image: ${DOCKER_USERNAME}/ors-frontend:latest
+    container_name: ors-frontend-prod
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - ors-prod-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for Session Management (Optional)
+  redis:
+    image: redis:alpine
+    container_name: ors-redis-prod
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_prod_data:/data
+    networks:
+      - ors-prod-network
+
+volumes:
+  mysql_prod_data:
+    driver: local
+  backend_prod_logs:
+    driver: local
+  redis_prod_data:
+    driver: local
+
+networks:
+  ors-prod-network:
+    driver: bridge
