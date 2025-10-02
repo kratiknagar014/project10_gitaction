@@ -87,16 +87,10 @@ jobs:
       with:
         ssh-private-key: ${{ secrets.DO_SSH_PRIVATE_KEY }}
         
-    - name: Copy deployment files to server
+    - name: Setup server directories and files
       run: |
-        # Check if deployment directory exists
-        if [ -d "./deployment" ]; then
-          echo "Copying deployment directory..."
-          scp -o StrictHostKeyChecking=no -r ./deployment/ root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/
-        else
-          echo "Deployment directory not found, creating basic setup on server..."
-          ssh -o StrictHostKeyChecking=no root@${{ secrets.DO_DROPLET_IP }} "mkdir -p /opt/ors-app/deployment"
-        fi
+        # Create deployment directory on server
+        ssh -o StrictHostKeyChecking=no root@${{ secrets.DO_DROPLET_IP }} "mkdir -p /opt/ors-app/deployment"
         
         # Copy docker-compose file
         scp -o StrictHostKeyChecking=no ./docker-compose.prod.yml root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/docker-compose.yml
