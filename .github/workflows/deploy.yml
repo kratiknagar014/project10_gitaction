@@ -89,7 +89,16 @@ jobs:
         
     - name: Copy deployment files to server
       run: |
-        scp -o StrictHostKeyChecking=no -r ./deployment/ root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/
+        # Check if deployment directory exists
+        if [ -d "./deployment" ]; then
+          echo "Copying deployment directory..."
+          scp -o StrictHostKeyChecking=no -r ./deployment/ root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/
+        else
+          echo "Deployment directory not found, creating basic setup on server..."
+          ssh -o StrictHostKeyChecking=no root@${{ secrets.DO_DROPLET_IP }} "mkdir -p /opt/ors-app/deployment"
+        fi
+        
+        # Copy docker-compose file
         scp -o StrictHostKeyChecking=no ./docker-compose.prod.yml root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/docker-compose.yml
         
     - name: Deploy to DigitalOcean Droplet
