@@ -62,13 +62,16 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '16'
-        cache: 'npm'
-        cache-dependency-path: ORSProject10-UI/package-lock.json
+        
+    - name: Clean npm cache
+      run: |
+        npm cache clean --force
         
     - name: Install frontend dependencies
       run: |
         cd ORSProject10-UI
-        npm ci --ignore-optional
+        rm -f package-lock.json
+        npm install --legacy-peer-deps --no-optional --force
         
     - name: Run frontend tests
       run: |
