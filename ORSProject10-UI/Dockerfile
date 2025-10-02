@@ -1,15 +1,18 @@
 # Multi-stage build for Angular application
-# Stage 1: Build stage
-FROM node:14-alpine AS build
+# Stage 1: Build stage - Using exact local Node.js version
+FROM node:12.22.12-alpine AS build
 
 # Set working directory
 WORKDIR /app
 
+# Install Angular CLI globally first (exact version)
+RUN npm install -g @angular/cli@7.3.9
+
 # Copy package files first for better layer caching
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies with legacy peer deps for Angular 7
+RUN npm install --legacy-peer-deps --no-optional
 
 # Copy source code
 COPY . .
