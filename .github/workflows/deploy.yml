@@ -103,14 +103,14 @@ jobs:
         ssh -o StrictHostKeyChecking=no root@${{ secrets.DO_DROPLET_IP }} << 'EOF'
           cd /opt/ors-app
           
-          # Set environment variables
-          export DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
-          export DB_HOST=${{ secrets.DB_HOST }}
-          export DB_USERNAME=${{ secrets.DB_USERNAME }}
-          export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-          export JWT_SECRET=${{ secrets.JWT_SECRET }}
-          export MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}
-          export MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}
+          # Create .env file with environment variables
+          echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" > .env
+          echo "DB_HOST=${{ secrets.DB_HOST }}" >> .env
+          echo "DB_USERNAME=${{ secrets.DB_USERNAME }}" >> .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+          echo "MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}" >> .env
+          echo "MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}" >> .env
           
           # Pull latest images
           docker-compose pull
