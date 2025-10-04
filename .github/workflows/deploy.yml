@@ -97,12 +97,8 @@ jobs:
         # Copy docker-compose file to server
         scp -o StrictHostKeyChecking=no docker-compose.prod.yml root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/docker-compose.yml
         
-        # Create deployment directory on server and copy files
-        ssh -o StrictHostKeyChecking=no root@${{ secrets.DO_DROPLET_IP }} "mkdir -p /opt/ors-app/deployment"
-        
-        # Copy deployment files individually
-        scp -o StrictHostKeyChecking=no deployment/init.sql root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/deployment/init.sql
-        scp -o StrictHostKeyChecking=no deployment/setup-droplet.sh root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/deployment/setup-droplet.sh
+        # Create deployment directory and basic init.sql on server
+        ssh -o StrictHostKeyChecking=no root@${{ secrets.DO_DROPLET_IP }} "mkdir -p /opt/ors-app/deployment && echo 'CREATE DATABASE IF NOT EXISTS project10_adv; USE project10_adv;' > /opt/ors-app/deployment/init.sql"
         
         ssh -o StrictHostKeyChecking=no root@${{ secrets.DO_DROPLET_IP }} << 'EOF'
           cd /opt/ors-app
