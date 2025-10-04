@@ -94,11 +94,19 @@ jobs:
         
     - name: Deploy to DigitalOcean Droplet
       run: |
+        # Copy docker-compose file to server
+        scp -o StrictHostKeyChecking=no docker-compose.prod.yml root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/docker-compose.yml
+        
+        # Copy deployment files to server
+        scp -o StrictHostKeyChecking=no -r deployment/ root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/
+        
         ssh -o StrictHostKeyChecking=no root@${{ secrets.DO_DROPLET_IP }} << 'EOF'
           cd /opt/ors-app
           
           # Set environment variables
           export DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
+          export DB_HOST=${{ secrets.DB_HOST }}
+          export DB_USERNAME=${{ secrets.DB_USERNAME }}
           export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
           export JWT_SECRET=${{ secrets.JWT_SECRET }}
           export MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}
