@@ -50,7 +50,7 @@ jobs:
       id: backend-meta
       uses: docker/metadata-action@v5
       with:
-        images: ${{ secrets.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}
+        images: rajatdhakad5/${{ env.BACKEND_IMAGE_NAME }}
         tags: |
           type=ref,event=branch
           type=sha,prefix={{branch}}-
@@ -60,7 +60,7 @@ jobs:
       id: frontend-meta
       uses: docker/metadata-action@v5
       with:
-        images: ${{ secrets.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE_NAME }}
+        images: rajatdhakad5/ors-frontend
         tags: |
           type=ref,event=branch
           type=sha,prefix={{branch}}-
