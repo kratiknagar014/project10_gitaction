@@ -110,13 +110,18 @@ jobs:
         
     - name: Deploy to DigitalOcean Droplet
       run: |
+        # Add server to known hosts
+        mkdir -p ~/.ssh
+        ssh-keyscan ${{ secrets.DO_DROPLET_IP }} >> ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/known_hosts
+        
         # Copy docker-compose file to server
-        scp -o StrictHostKeyChecking=no docker-compose.prod.yml root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/docker-compose.yml
+        scp docker-compose.prod.yml root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/docker-compose.yml
         
         # Create deployment directory and basic init.sql on server
-        ssh -o StrictHostKeyChecking=no root@${{ secrets.DO_DROPLET_IP }} "mkdir -p /opt/ors-app/deployment && echo 'CREATE DATABASE IF NOT EXISTS project10_adv; USE project10_adv;' > /opt/ors-app/deployment/init.sql"
+        ssh root@${{ secrets.DO_DROPLET_IP }} "mkdir -p /opt/ors-app/deployment && echo 'CREATE DATABASE IF NOT EXISTS project10_adv; USE project10_adv;' > /opt/ors-app/deployment/init.sql"
         
-        ssh -o StrictHostKeyChecking=no root@${{ secrets.DO_DROPLET_IP }} << 'EOF'
+        ssh root@${{ secrets.DO_DROPLET_IP }} << 'EOF'
           cd /opt/ors-app
           
           # Create .env file with environment variables
