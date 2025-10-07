@@ -24,9 +24,7 @@ services:
 
   # Spring Boot Backend (Production)
   backend:
-    build:
-      context: ./projectORS
-      dockerfile: Dockerfile.prod
+    image: ${DOCKER_USERNAME}/ors-backend:latest
     container_name: ors-backend-prod
     restart: always
     environment:
@@ -57,9 +55,7 @@ services:
 
   # Angular Frontend (Production)
   frontend:
-    build:
-      context: ./ORSProject10-UI
-      dockerfile: Dockerfile.prod
+    image: ${DOCKER_USERNAME}/ors-frontend:latest
     container_name: ors-frontend-prod
     restart: always
     ports:

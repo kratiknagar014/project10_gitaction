@@ -179,8 +179,32 @@ jobs:
         # Copy docker-compose file to server
         scp -o ConnectTimeout=30 docker-compose.prod.yml root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/docker-compose.yml
         
-        # Create deployment directory and copy MySQL init script
-        ssh -o ConnectTimeout=30 -o ServerAliveInterval=60 root@${{ secrets.DO_DROPLET_IP }} "mkdir -p /opt/ors-app/deployment"
+        # Create deployment directory and SSL directory
+        ssh -o ConnectTimeout=30 -o ServerAliveInterval=60 root@${{ secrets.DO_DROPLET_IP }} "
+          mkdir -p /opt/ors-app/deployment
+          mkdir -p /opt/ors-app/ssl
+          
+          # Copy SSL certificates from Let's Encrypt (if they exist)
+          if [ -d '/etc/letsencrypt/live/gitaction.project10.live' ]; then
+            echo 'Copying existing SSL certificates...'
+            cp /etc/letsencrypt/live/gitaction.project10.live/fullchain.pem /opt/ors-app/ssl/
+            cp /etc/letsencrypt/live/gitaction.project10.live/privkey.pem /opt/ors-app/ssl/
+            chmod 644 /opt/ors-app/ssl/fullchain.pem
+            chmod 600 /opt/ors-app/ssl/privkey.pem
+            echo 'SSL certificates copied successfully!'
+          else
+            echo 'No existing SSL certificates found. Will need to generate them.'
+            echo 'Creating placeholder certificates for now...'
+            openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+              -keyout /opt/ors-app/ssl/privkey.pem \
+              -out /opt/ors-app/ssl/fullchain.pem \
+              -subj '/C=IN/ST=MP/L=Indore/O=ORS/CN=gitaction.project10.live'
+            chmod 644 /opt/ors-app/ssl/fullchain.pem
+            chmod 600 /opt/ors-app/ssl/privkey.pem
+          fi
+          
+          ls -la /opt/ors-app/ssl/
+        "
         
         # Download init.sql directly from GitHub repository to server
         echo "Downloading init.sql directly from GitHub repository..."
