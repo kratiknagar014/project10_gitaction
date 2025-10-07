@@ -181,7 +181,26 @@ jobs:
         
         # Create deployment directory and copy MySQL init script
         ssh -o ConnectTimeout=30 -o ServerAliveInterval=60 root@${{ secrets.DO_DROPLET_IP }} "mkdir -p /opt/ors-app/deployment"
-        scp -o ConnectTimeout=30 deployment/init.sql root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/deployment/init.sql
+        
+        # Download init.sql directly from GitHub repository to server
+        echo "Downloading init.sql directly from GitHub repository..."
+        ssh -o ConnectTimeout=30 root@${{ secrets.DO_DROPLET_IP }} "
+          cd /opt/ors-app/deployment
+          curl -H 'Authorization: token ${{ secrets.GITHUB_TOKEN }}' \
+               -H 'Accept: application/vnd.github.v3.raw' \
+               -o init.sql \
+               -L https://api.github.com/repos/${{ github.repository }}/contents/deployment/init.sql
+          
+          # Verify download
+          if [ -f init.sql ] && [ -s init.sql ]; then
+            echo '✅ init.sql downloaded successfully from GitHub!'
+            ls -la init.sql
+            wc -c init.sql
+          else
+            echo '❌ Failed to download init.sql from GitHub'
+            exit 1
+          fi
+        "
         
         # Create environment file
         ssh -o ConnectTimeout=30 -o ServerAliveInterval=60 root@${{ secrets.DO_DROPLET_IP }} "
