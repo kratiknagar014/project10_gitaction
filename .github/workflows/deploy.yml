@@ -105,8 +105,9 @@ jobs:
         
     - name: Setup server and install Docker if needed
       run: |
-        # Setup server with Docker installation
-        ssh -o StrictHostKeyChecking=no root@${{ secrets.DO_DROPLET_IP }} "
+        # Setup server with Docker installation (with retry)
+        for i in {1..3}; do
+          if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -o ServerAliveInterval=60 root@${{ secrets.DO_DROPLET_IP }} "
           # Create main directory structure
           mkdir -p /opt/ors-app/{deployment,logs,ssl}
           chown -R root:root /opt/ors-app
@@ -154,7 +155,19 @@ jobs:
           # Verify directories
           ls -la /opt/ors-app/
           echo '✅ Server setup completed!'
-        "
+        "; then
+            echo "✅ SSH connection successful on attempt $i"
+            break
+          else
+            echo "⚠️ SSH connection failed on attempt $i/3"
+            if [ $i -eq 3 ]; then
+              echo "❌ All SSH attempts failed"
+              exit 1
+            fi
+            echo "⏳ Waiting 10 seconds before retry..."
+            sleep 10
+          fi
+        done
         
     - name: Deploy to DigitalOcean Droplet
       run: |
@@ -164,13 +177,13 @@ jobs:
         chmod 600 ~/.ssh/known_hosts
         
         # Copy docker-compose file to server
-        scp docker-compose.prod.yml root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/docker-compose.yml
+        scp -o ConnectTimeout=30 docker-compose.prod.yml root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/docker-compose.yml
         
         # Create deployment directory and basic init.sql on server
-        ssh root@${{ secrets.DO_DROPLET_IP }} "mkdir -p /opt/ors-app/deployment && echo 'CREATE DATABASE IF NOT EXISTS project10_adv; USE project10_adv;' > /opt/ors-app/deployment/init.sql"
+        ssh -o ConnectTimeout=30 -o ServerAliveInterval=60 root@${{ secrets.DO_DROPLET_IP }} "mkdir -p /opt/ors-app/deployment && echo 'CREATE DATABASE IF NOT EXISTS project10_adv; USE project10_adv;' > /opt/ors-app/deployment/init.sql"
         
         # Create environment file
-        ssh root@${{ secrets.DO_DROPLET_IP }} "
+        ssh -o ConnectTimeout=30 -o ServerAliveInterval=60 root@${{ secrets.DO_DROPLET_IP }} "
           cd /opt/ors-app
           echo 'DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}' > .env
           echo 'DB_HOST=${{ secrets.DB_HOST }}' >> .env
@@ -182,10 +195,10 @@ jobs:
         "
         
         # Pull latest images (separate command)
-        ssh root@${{ secrets.DO_DROPLET_IP }} "cd /opt/ors-app && docker-compose pull"
+        ssh -o ConnectTimeout=30 -o ServerAliveInterval=60 root@${{ secrets.DO_DROPLET_IP }} "cd /opt/ors-app && docker-compose pull"
         
         # Deploy containers (separate command)
-        ssh root@${{ secrets.DO_DROPLET_IP }} "
+        ssh -o ConnectTimeout=30 -o ServerAliveInterval=60 root@${{ secrets.DO_DROPLET_IP }} "
           cd /opt/ors-app
           docker-compose down
           docker-compose up -d
@@ -193,7 +206,7 @@ jobs:
         "
         
         # Quick status check (separate command)
-        ssh root@${{ secrets.DO_DROPLET_IP }} "
+        ssh -o ConnectTimeout=30 -o ServerAliveInterval=60 root@${{ secrets.DO_DROPLET_IP }} "
           cd /opt/ors-app
           docker-compose ps
           docker image prune -f
