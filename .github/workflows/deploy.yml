@@ -181,7 +181,7 @@ jobs:
         
         # Create deployment directory and copy MySQL init script
         ssh -o ConnectTimeout=30 -o ServerAliveInterval=60 root@${{ secrets.DO_DROPLET_IP }} "mkdir -p /opt/ors-app/deployment"
-        scp -o ConnectTimeout=30 deployment/mysql-init.sql root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/deployment/mysql-init.sql
+        scp -o ConnectTimeout=30 deployment/init.sql root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/deployment/init.sql
         
         # Create environment file
         ssh -o ConnectTimeout=30 -o ServerAliveInterval=60 root@${{ secrets.DO_DROPLET_IP }} "

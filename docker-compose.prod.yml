@@ -13,7 +13,7 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
       - mysql_prod_data:/var/lib/mysql
-      - ./deployment/mysql-init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./deployment/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - ors-prod-network
     healthcheck:
@@ -24,7 +24,9 @@ services:
 
   # Spring Boot Backend (Production)
   backend:
-    image: ${DOCKER_USERNAME}/ors-backend:latest
+    build:
+      context: ./projectORS
+      dockerfile: Dockerfile.prod
     container_name: ors-backend-prod
     restart: always
     environment:
@@ -55,7 +57,9 @@ services:
 
   # Angular Frontend (Production)
   frontend:
-    image: ${DOCKER_USERNAME}/ors-frontend:latest
+    build:
+      context: ./ORSProject10-UI
+      dockerfile: Dockerfile.prod
     container_name: ors-frontend-prod
     restart: always
     ports:
