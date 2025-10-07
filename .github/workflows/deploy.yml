@@ -186,7 +186,7 @@ jobs:
       run: |
         if [ ${{ job.status }} == 'success' ]; then
           echo "✅ Deployment successful!"
-          echo "🌐 Application URL: http://${{ secrets.DO_DROPLET_IP }}"
+          echo "🌐 Application URL: https://github.project10.live"
           echo "📊 Backend Health: http://${{ secrets.DO_DROPLET_IP }}:8084/actuator/health"
         else
           echo "❌ Deployment failed!"
