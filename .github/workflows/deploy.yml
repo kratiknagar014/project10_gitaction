@@ -70,7 +70,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: ./projectORS
-        file: ./projectORS/Dockerfile
+        file: ./projectORS/Dockerfile.prod
         push: true
         tags: ${{ steps.backend-meta.outputs.tags }}
         labels: ${{ steps.backend-meta.outputs.labels }}
@@ -81,7 +81,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: ./ORSProject10-UI
-        file: ./ORSProject10-UI/Dockerfile
+        file: ./ORSProject10-UI/Dockerfile.prod
         push: true
         tags: ${{ steps.frontend-meta.outputs.tags }}
         labels: ${{ steps.frontend-meta.outputs.labels }}
