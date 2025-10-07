@@ -179,8 +179,9 @@ jobs:
         # Copy docker-compose file to server
         scp -o ConnectTimeout=30 docker-compose.prod.yml root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/docker-compose.yml
         
-        # Create deployment directory and basic init.sql on server
-        ssh -o ConnectTimeout=30 -o ServerAliveInterval=60 root@${{ secrets.DO_DROPLET_IP }} "mkdir -p /opt/ors-app/deployment && echo 'CREATE DATABASE IF NOT EXISTS project10_adv; USE project10_adv;' > /opt/ors-app/deployment/init.sql"
+        # Create deployment directory and copy MySQL init script
+        ssh -o ConnectTimeout=30 -o ServerAliveInterval=60 root@${{ secrets.DO_DROPLET_IP }} "mkdir -p /opt/ors-app/deployment"
+        scp -o ConnectTimeout=30 deployment/mysql-init.sql root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/deployment/mysql-init.sql
         
         # Create environment file
         ssh -o ConnectTimeout=30 -o ServerAliveInterval=60 root@${{ secrets.DO_DROPLET_IP }} "
@@ -218,7 +219,7 @@ jobs:
       run: |
         if [ ${{ job.status }} == 'success' ]; then
           echo "✅ Deployment successful!"
-          echo "🌐 Application URL: https://github.project10.live"
+          echo "🌐 Application URL: https://gitaction.project10.live"
           echo "📊 Backend Health: http://${{ secrets.DO_DROPLET_IP }}:8084/actuator/health"
         else
           echo "❌ Deployment failed!"

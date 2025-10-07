@@ -4,7 +4,7 @@ export const environment = {
   production: true,
   
   // Backend API Configuration (Production)
-  apiUrl: 'https://project10.live/api',
+  apiUrl: 'https://gitaction.project10.live/api',
   
   // API Endpoints
   endpoints: {
@@ -15,7 +15,7 @@ export const environment = {
   },
 
   // Swagger URL for production (disabled in production)
-  swaggerUrl: 'https://project10.live/api/swagger-ui.html',
+  swaggerUrl: 'https://gitaction.project10.live/api/swagger-ui.html',
   
   // Feature Flags (Production)
   features: {

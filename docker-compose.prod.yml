@@ -13,7 +13,7 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
       - mysql_prod_data:/var/lib/mysql
-      - ./deployment/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./deployment/mysql-init.sql:/docker-entrypoint-initdb.d/01-init.sql
     networks:
       - ors-prod-network
     healthcheck:
