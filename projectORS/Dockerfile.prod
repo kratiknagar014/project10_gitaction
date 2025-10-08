@@ -1,20 +1,27 @@
 # Multi-stage build for Spring Boot application (Production)
+# Stage 1: Build stage
 FROM maven:3.8.6-openjdk-11-slim AS build
 
 # Set working directory
 WORKDIR /app
 
-# Copy pom.xml first for better caching
+# Copy Maven files for dependency resolution
 COPY pom.xml .
+COPY .mvn .mvn
+COPY mvnw .
+COPY mvnw.cmd .
 
-# Download dependencies using system maven (more reliable)
-RUN mvn dependency:go-offline -B
+# Make mvnw executable
+RUN chmod +x mvnw
+
+# Download dependencies (for better layer caching)
+RUN ./mvnw dependency:go-offline -B
 
 # Copy source code
 COPY src ./src
 
 # Build the application (skip tests for faster build)
-RUN mvn clean package -DskipTests -B
+RUN ./mvnw clean package -DskipTests
 
 # Stage 2: Runtime stage
 FROM openjdk:11-jre-slim
@@ -31,7 +38,15 @@ RUN apt-get update && \
 # Copy JAR from build stage
 COPY --from=build /app/target/*.jar app.jar
 
-# Run as root for simplicity (production containers are isolated)
+# Create non-root user for security
+RUN addgroup -g 1001 -S appuser && \
+    adduser -u 1001 -S appuser -G appuser
+
+# Change ownership of app directory
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
 
 # Expose port
 EXPOSE 8084
