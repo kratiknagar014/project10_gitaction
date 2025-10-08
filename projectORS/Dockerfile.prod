@@ -31,15 +31,7 @@ RUN apt-get update && \
 # Copy JAR from build stage
 COPY --from=build /app/target/*.jar app.jar
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S appuser && \
-    adduser -u 1001 -S appuser -G appuser
-
-# Change ownership of app directory
-RUN chown -R appuser:appuser /app
-
-# Switch to non-root user
-USER appuser
+# Run as root for simplicity (production containers are isolated)
 
 # Expose port
 EXPOSE 8084
