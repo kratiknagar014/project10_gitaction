@@ -7,21 +7,15 @@ WORKDIR /app
 
 # Copy Maven files for dependency resolution
 COPY pom.xml .
-COPY .mvn .mvn
-COPY mvnw .
-COPY mvnw.cmd .
 
-# Make mvnw executable
-RUN chmod +x mvnw
-
-# Download dependencies (for better layer caching)
-RUN ./mvnw dependency:go-offline -B
+# Download dependencies first (better caching) with retry and verbose logging
+RUN mvn dependency:go-offline -B -X || mvn dependency:resolve -B
 
 # Copy source code
 COPY src ./src
 
 # Build the application (skip tests for faster build)
-RUN ./mvnw clean package -DskipTests
+RUN mvn clean package -DskipTests -Dmaven.repo.local=/root/.m2/repository
 
 # Stage 2: Runtime stage
 FROM openjdk:11-jre-slim
