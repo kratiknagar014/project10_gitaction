@@ -63,8 +63,7 @@ services:
     container_name: ors-frontend-prod
     restart: always
     ports:
-      - "80:80"
-      - "443:443"
+      - "8080:80"
     volumes:
       - /opt/ors-app/ssl:/etc/nginx/ssl:ro
     depends_on:
