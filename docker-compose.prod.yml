@@ -64,8 +64,6 @@ services:
     restart: always
     ports:
       - "8080:80"
-    volumes:
-      - /opt/ors-app/ssl:/etc/nginx/ssl:ro
     depends_on:
       - backend
     networks:
