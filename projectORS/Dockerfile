@@ -28,4 +28,4 @@ COPY src ./src
 EXPOSE 8084 5005
 
 # Development command with hot reload and debug
-CMD ["./mvnw", "spring-boot:run", "-Dspring-boot.run.profiles=dev", "-Dspring-boot.run.jvmArguments=-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=*:5005"]
+CMD ["./mvnw", "spring-boot:run", "-Dspring-boot.run.profiles=dev"]

@@ -12,7 +12,7 @@ services:
       MYSQL_USER: rajat
       MYSQL_PASSWORD: Indore@123
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./deployment/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -28,14 +28,16 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: dev
-      DB_HOST: database
-      DB_PORT: 3306
-      DB_NAME: project10_adv
-      DB_USERNAME: rajat
-      DB_PASSWORD: Indore@123
+      # Database Configuration
+      SPRING_DATASOURCE_URL: jdbc:mysql://database:3306/project10_adv?allowPublicKeyRetrieval=true&useSSL=false
+      SPRING_DATASOURCE_USERNAME: rajat
+      SPRING_DATASOURCE_PASSWORD: Indore@123
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+      # JWT Configuration
       JWT_SECRET: RaysTechSecretKey2024
-      MAIL_USERNAME: test@gmail.com
-      MAIL_PASSWORD: test_password
+      # Mail Configuration
+      SPRING_MAIL_USERNAME: test@gmail.com
+      SPRING_MAIL_PASSWORD: test_password
     ports:
       - "8084:8084"
     depends_on:
