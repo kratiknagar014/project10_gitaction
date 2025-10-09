@@ -176,34 +176,38 @@ jobs:
         ssh-keyscan ${{ secrets.DO_DROPLET_IP }} >> ~/.ssh/known_hosts
         chmod 600 ~/.ssh/known_hosts
         
-        # Copy docker-compose file to server
+        # Copy docker-compose file and nginx config to server
         scp -o ConnectTimeout=30 docker-compose.prod.yml root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/docker-compose.yml
+        scp -r -o ConnectTimeout=30 nginx/ root@${{ secrets.DO_DROPLET_IP }}:/opt/ors-app/
         
-        # Create deployment directory and SSL directory
+        # Create deployment directory and certbot directories
         ssh -o ConnectTimeout=30 -o ServerAliveInterval=60 root@${{ secrets.DO_DROPLET_IP }} "
           mkdir -p /opt/ors-app/deployment
-          mkdir -p /opt/ors-app/ssl
+          mkdir -p /opt/ors-app/certbot/{www,etc}
+          chown -R root:root /opt/ors-app/certbot
+          chmod -R 755 /opt/ors-app/certbot
           
-          # Copy SSL certificates from Let's Encrypt (if they exist)
-          if [ -d '/etc/letsencrypt/live/gitaction.project10.live' ]; then
-            echo 'Copying existing SSL certificates...'
-            cp /etc/letsencrypt/live/gitaction.project10.live/fullchain.pem /opt/ors-app/ssl/
-            cp /etc/letsencrypt/live/gitaction.project10.live/privkey.pem /opt/ors-app/ssl/
-            chmod 644 /opt/ors-app/ssl/fullchain.pem
-            chmod 600 /opt/ors-app/ssl/privkey.pem
-            echo 'SSL certificates copied successfully!'
+          # Start nginx and certbot services (creates volumes)
+          cd /opt/ors-app
+          docker-compose up -d nginx certbot || true
+          
+          # Check if SSL certificates exist, if not generate them
+          if [ ! -d '/opt/ors-app/certbot/etc/live/gitaction.project10.live' ]; then
+            echo '🔐 No SSL certificates found, generating new ones...'
+            docker run --rm \
+              -v /opt/ors-app/certbot/www:/var/www/certbot \
+              -v /opt/ors-app/certbot/etc:/etc/letsencrypt \
+              certbot/certbot certonly --webroot \
+                --webroot-path=/var/www/certbot \
+                -d gitaction.project10.live -d www.gitaction.project10.live \
+                --email ${{ secrets.MAIL_USERNAME }} --agree-tos --no-eff-email
+            
+            # Restart nginx to pick up certificates
+            docker-compose restart nginx
+            echo '✅ SSL certificates generated successfully!'
           else
-            echo 'No existing SSL certificates found. Will need to generate them.'
-            echo 'Creating placeholder certificates for now...'
-            openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-              -keyout /opt/ors-app/ssl/privkey.pem \
-              -out /opt/ors-app/ssl/fullchain.pem \
-              -subj '/C=IN/ST=MP/L=Indore/O=ORS/CN=gitaction.project10.live'
-            chmod 644 /opt/ors-app/ssl/fullchain.pem
-            chmod 600 /opt/ors-app/ssl/privkey.pem
+            echo '✅ SSL certificates already exist'
           fi
-          
-          ls -la /opt/ors-app/ssl/
         "
         
         # Download init.sql directly from GitHub repository to server

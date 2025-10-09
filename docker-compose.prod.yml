@@ -41,8 +41,8 @@ services:
       SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD}
       # CORS Configuration
       CORS_ALLOWED_ORIGINS: https://gitaction.project10.live,http://gitaction.project10.live
-    ports:
-      - "8084:8084"
+    expose:
+      - "8084"
     depends_on:
       database:
         condition: service_healthy
@@ -62,8 +62,8 @@ services:
     image: ${DOCKER_USERNAME}/ors-frontend:latest
     container_name: ors-frontend-prod
     restart: always
-    ports:
-      - "8080:80"
+    expose:
+      - "80"
     depends_on:
       - backend
     networks:
@@ -73,6 +73,40 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # Nginx Reverse Proxy (SSL Termination)
+  nginx:
+    image: nginx:stable-alpine
+    container_name: ors-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - ors-prod-network
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - certbot-etc:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Certbot for SSL Certificate Management
+  certbot:
+    image: certbot/certbot
+    container_name: ors-certbot
+    networks:
+      - ors-prod-network
+    volumes:
+      - certbot-etc:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+    entrypoint: /bin/sh -c "trap exit TERM; while :; do sleep 12h & wait $${!}; certbot renew --webroot -w /var/www/certbot --quiet && docker exec ors-nginx nginx -s reload || true; done"
 
   # Redis for Session Management (Optional)
   redis:
@@ -91,6 +125,10 @@ volumes:
   backend_prod_logs:
     driver: local
   redis_prod_data:
+    driver: local
+  certbot-etc:
+    driver: local
+  certbot-www:
     driver: local
 
 networks:
